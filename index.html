@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>メモ帳アプリ</title>
+    <script src="https://code.jquery.com/jquery-3.6.3.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        #helpButton, #hintButton { /* Apply styles to both buttons */
+            position: fixed;
+            bottom: 20px;
+            border-radius: 50%;
+            padding: 10px;
+            /* background-color: #4CAF50; */ /* Remove background color */
+            /* color: white; */ /* Remove text color */
+            /* border: none; */ /* Remove border */
+            cursor: pointer;
+            height: 40px; /* ボタンの高さを40pxに設定 */
+            background-color: white; /* ボタンの背景色を白に設定 */
+            border: 1px solid #ccc; /* ボタンに薄いグレーの枠線を追加 */
+        }
+        #helpButton, #hintButton { /* Apply styles to both buttons */
+            border-radius: 50%; /* Make the button round */
+        }
+        .card {
+            width: 100%; /* Make card width 100% */
+        }
+        .list-group-item strong {
+            font-weight: bold; /* Make the text bold */
+        }
+        #memoList {
+            margin-top: 20px; /* Add margin-top to create space */
+        }
+        /* Add styles to prevent button overlap */
+        #helpButton {
+            right: 80px; /* Adjust right position for the help button */
+        }
+        #hintButton {
+            right: 20px; /* Keep the hint button on the right edge */
+        }
+
+        /* Style for buttons on hover */
+        #helpButton:hover, #hintButton:hover,
+        #helpButton:focus, #hintButton:focus {
+            background-color: rgb(95, 133, 255); /* Change background color to yellow on hover */
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="mb-4">メモ帳アプリ（データ永続型）</h1>
+        <div class="mb-3">
+            <div class="input-group mb-3">
+                <input type="text" class="form-control" id="searchInput" placeholder="部分一致検索入力(スペースで区切ってAND検索ができます)">
+                <button class="btn btn-outline-secondary" id="clearSearchBtn">クリア</button>
+            </div>
+            <button class="btn btn-primary" id="addMemoBtn">メモ登録</button>
+            <button class="btn btn-secondary" id="exportBtn">データ保存(JSON)</button>
+            <input type="file" id="importFile" accept=".json" style="display: none;">
+            <label for="importFile" class="btn btn-info">データ読込(JSON)</label>
+        </div>
+        <div id="memoList"></div>
+    </div>
+
+    <!-- Modal for adding/editing memo -->
+    <div class="modal fade" id="memoModal" tabindex="-1" aria-labelledby="memoModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg"> <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="memoModalLabel">メモ登録</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="memoContent" class="form-label">メモ内容:</label>
+                        <textarea class="form-control form-control-lg" id="memoContent" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">閉じる</button>
+                    <button type="button" class="btn btn-primary" id="saveMemoBtn">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for help -->
+    <div class="modal fade" id="helpModal" tabindex="-1" aria-labelledby="helpModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-md">  <!-- Change to modal-md for wider modal -->
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="helpModalLabel">使い方</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>このメモ帳アプリは、ブラウザ上でメモを管理できるツールです。</p>
+                    <ul class="list-group">  <!-- Add list-group class to ul -->
+                        <li class="list-group-item"><strong>メモの登録</strong>: 「メモ登録」ボタンを押して、メモ内容を入力し、「保存」ボタンを押すと、新しいメモが追加されます。</li>
+                        <li class="list-group-item"><strong>メモの編集</strong>: メモの編集ボタンを押すと、メモの内容を編集できます。編集後「保存」ボタンを押すと、変更内容が反映されます。</li>
+                        <li class="list-group-item"><strong>メモの削除</strong>: メモの削除ボタンを押すと、確認メッセージが表示され、確認後削除されます。</li>
+                        <li class="list-group-item"><strong>検索機能</strong>: メモ一覧の上部に検索ボックスがあり、メモの内容の一部を入力することで、該当するメモを絞り込むことができます。スペースで区切って複数のワードで検索することもできます。</li>
+                        <li class="list-group-item"><strong>データ保存/読込</strong>: 「データ保存(JSON)」ボタンを押すと、現在のメモ一覧をJSON形式でファイルに保存できます。「データ読込(JSON)」ボタンを押すと、JSONファイルを選択して、保存したメモ一覧を読み込むことができます。</li>
+                    </ul>
+                    <p class="text-danger">注意: ブラウザを閉じたり、リロードすると、登録編集された内容が全て削除されますので、作業終了後など、こまめにデータ保存してください。</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">閉じる</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for hint -->
+    <div class="modal fade" id="hintModal" tabindex="-1" aria-labelledby="hintModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-md">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="hintModalLabel">ヒント</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>・ このメモ帳アプリを普通にメモ帳として使うのも良いですが、ロングテキスト、改行に対応していますので、お好きなテンプレートをテキストエリアに流し込んで、データを入力するという使い方も良いかと思います。</p>
+                    <p>・ このメモ帳アプリは、このページのindex.htmlファイルのみで動作しています。インターネットに繋がっているパソコンであれば、このHTMLファイルをダウンロードしてパソコン内で開いても、同様に動作します。（ファイルを１つに集約する都合上、アプリに必要なライブラリなどはインターネットから取得しています。）</p>
+                    <p>・ このメモ帳アプリの編集や再配布は、ご自由に行って下さい。</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">閉じる</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <button id="helpButton" class="btn btn-outline-primary btn-sm">使い方</button>
+    <button id="hintButton" class="btn btn-outline-primary btn-sm">ヒント</button> <!-- Add hint button -->
+
+    <script>
+        let memos = {}; // Use an object to store memos by ID
+        let nextId = 1; // Start with ID 1
+        let editIndex = -1; // Track the index of the memo being edited
+
+        // Function to render memos
+        function renderMemos() {
+            const memoList = document.getElementById('memoList');
+            memoList.innerHTML = '';
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const searchWords = searchTerm.split(/\s+/); // Split by spaces (including full-width spaces)
+
+            editIndex = -1; // Reset editIndex after rendering memos
+
+            // Sort memos by updated date (newest first)
+            const sortedMemos = Object.values(memos).sort((a, b) => {
+                return new Date(b.updated) - new Date(a.updated); // Sort by updated date
+            });
+
+            for (const memo of sortedMemos) {
+                let match = true; // Assume a match initially
+
+                // Check if all search words are included in the memo content
+                for (const word of searchWords) {
+                    if (!memo.content.toLowerCase().includes(word)) {
+                        match = false; // If any word is not found, set match to false
+                        break; // No need to check further
+                    }
+                }
+
+                if (match) {
+                    const memoItem = document.createElement('div');
+                    memoItem.classList.add('card', 'mb-3', 'w-100'); // Add w-100 class to card
+                    memoItem.innerHTML = `
+                        <div class="card-body">
+                            <p class="card-text">ID: ${memo.id}, ${memo.content}</p> <p class="card-text text-muted">Created: ${memo.created}, Last Updated: ${memo.updated}</p>
+                            <button class="btn btn-sm btn-primary me-2" onclick="editMemo('${memo.id}')">編集</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteMemo('${memo.id}')">削除</button>
+                        </div>
+                    `;
+                    memoList.appendChild(memoItem);
+                }
+            }
+        }
+
+        // Function to add memo
+        function addMemo(content) {
+            const now = new Date().toLocaleString();
+            memos[nextId] = { id: nextId, content, created: now, updated: now };
+            nextId++; // Increment ID for the next memo
+            renderMemos();
+            // editIndex = -1; // Remove this line
+        }
+
+        // Function to edit memo
+        function editMemo(id) {
+            editIndex = id; // Store the ID of the memo being edited
+            const memo = memos[id];
+            const copiedContent = memo.content; // Copy memo content to a new variable
+            document.getElementById('memoModalLabel').textContent = 'メモ編集';
+            document.getElementById('memoContent').value = copiedContent; // Assign copied content to textarea
+            $('#memoModal').modal('show');
+        }
+
+        // Function to delete memo
+        function deleteMemo(id) {
+            if (confirm('本当にこのメモを削除しますか？')) {
+                delete memos[id]; // Delete memo by ID
+                renderMemos();
+            }
+        }
+
+        // Event listener for Add Memo button
+        document.getElementById('addMemoBtn').addEventListener('click', () => {
+            document.getElementById('memoModalLabel').textContent = 'メモ登録';
+            document.getElementById('memoContent').value = '';
+            $('#memoModal').modal('show');
+        });
+
+        // Event listener for Save Memo button
+        document.getElementById('saveMemoBtn').addEventListener('click', () => {
+            const memoContent = document.getElementById('memoContent').value.trim();
+            if (memoContent !== '') {
+                if (editIndex !== -1) {
+                    // Update existing memo
+                    memos[editIndex].content = memoContent;
+                    memos[editIndex].updated = new Date().toLocaleString();
+                    editIndex = -1; // Reset editIndex after editing
+                } else {
+                    // Add new memo
+                    addMemo(memoContent);
+                }
+                $('#memoModal').modal('hide');
+                renderMemos(); // Update the memo list after saving
+            } else {
+                alert('Please enter memo content.');
+            }
+        });
+
+        // Event listener for Export button
+        document.getElementById('exportBtn').addEventListener('click', () => {
+            const jsonContent = JSON.stringify(memos, null, 2); // Indent for readability
+            const blob = new Blob([jsonContent], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.setAttribute('href', url);
+            link.setAttribute('download', 'memos.json');
+            document.body.appendChild(link);
+            link.click();
+        });
+
+        // Event listener for Import button
+        document.getElementById('importFile').addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                try {
+                    const importedMemos = JSON.parse(e.target.result);
+                    memos = importedMemos; // Update memos with imported data
+                    nextId = Math.max(...Object.keys(memos).map(Number)) + 1; // Update nextId
+                    renderMemos();
+                } catch (error) {
+                    alert('Invalid JSON file.');
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        // Event listener for Search Input
+        document.getElementById('searchInput').addEventListener('input', renderMemos);
+
+        // Event listener for Clear Search Button
+        document.getElementById('clearSearchBtn').addEventListener('click', () => {
+            document.getElementById('searchInput').value = '';
+            renderMemos();
+        });
+
+        // Event listener for Help button
+        document.getElementById('helpButton').addEventListener('click', () => {
+            $('#helpModal').modal('show');
+        });
+
+        // Event listener for Hint button
+        document.getElementById('hintButton').addEventListener('click', () => {
+            $('#hintModal').modal('show');
+        });
+
+        // Event listener for modal hidden event
+        $('#memoModal').on('hidden.bs.modal', function () {
+            editIndex = -1; // Reset editIndex when modal is hidden
+        });
+
+        // Initial rendering
+        renderMemos();
+    </script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
