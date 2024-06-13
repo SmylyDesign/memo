@@ -76,6 +76,7 @@
                         <label for="memoContent" class="form-label">メモ内容:</label>
                         <textarea class="form-control form-control-lg" id="memoContent" rows="9"></textarea>  <!-- Changed rows to 6 -->
                     </div>
+                    <P>現在の日時：</P><span id="view_clock"></span><br><br>
                     <button class="btn btn-secondary" id="openEmojiBtn">絵文字を探す</button>
                 </div>
                 <div class="modal-footer">
@@ -226,6 +227,28 @@
                 delete memos[id]; // Delete memo by ID
                 renderMemos();
             }
+        }
+
+        timerID = setInterval('clock()',500); //0.5秒毎にclock()を実行
+
+        function clock() {
+            document.getElementById("view_clock").innerHTML = getNow();
+        }
+
+        function getNow() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const mon = now.getMonth()+1; //１を足すこと
+            const day = now.getDate();
+            const hour = now.getHours();
+            const min = now.getMinutes();
+            const sec = now.getSeconds();
+            const you = now.getDay(); //曜日(0～6=日～土)
+            const youbi = new Array("日","月","火","水","木","金","土");
+
+            //出力用
+            var s = year + "/" + mon + "/" + day + " (" + youbi[you] + ") " + hour + ":" + min + ":" + sec; 
+            return s;
         }
 
         // Event listener for Add Memo button
